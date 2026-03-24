@@ -1,0 +1,32 @@
+version: 2
+
+builds:
+  - main: ./cmd/vaultvpn/
+    binary: vaultvpn
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+
+brews:
+  - repository:
+      owner: gustavoguarda
+      name: homebrew-tap
+    homepage: https://github.com/gustavoguarda/vaultvpn
+    description: Cliente VPN cross-platform com TUI interativa
+    install: |
+      bin.install "vaultvpn"

@@ -1,0 +1,8 @@
+.env
+config.ovpn
+VaultVPN.app/
+.DS_Store
+vaultvpn
+vaultvpn-*
+dist/
+.claude
