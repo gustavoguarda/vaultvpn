@@ -91,6 +91,10 @@ func bwUnlock(masterPassword string) (string, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		detail := strings.TrimSpace(string(out))
+		if isCorruptedVault(detail) {
+			bwLogout()
+			return "", fmt.Errorf("Vault corrompido detectado. Foi feito logout automático.\nExecute 'bw login' no terminal e tente novamente")
+		}
 		if detail != "" {
 			return "", fmt.Errorf("%s", detail)
 		}
@@ -102,6 +106,17 @@ func bwUnlock(masterPassword string) (string, error) {
 		return "", fmt.Errorf("sessão do Bitwarden vazia")
 	}
 	return session, nil
+}
+
+func isCorruptedVault(output string) bool {
+	lower := strings.ToLower(output)
+	return strings.Contains(lower, "model state is invalid") ||
+		strings.Contains(lower, "encrypted migrator")
+}
+
+func bwLogout() {
+	cmd := bwCmd("bw", "logout")
+	_ = cmd.Run()
 }
 
 func bwGet(field, itemName, session string) (string, error) {

@@ -36,7 +36,7 @@ type GUI struct {
 	providerSelect *widget.Select
 	passEntry      *widget.Entry
 	actionBtn      *widget.Button
-	logText        *widget.Label
+	logText        *widget.Entry
 	logScroll      *container.Scroll
 
 	connected bool
@@ -99,8 +99,8 @@ func (g *GUI) build() {
 	g.actionBtn = widget.NewButton("Conectar", g.onAction)
 	g.actionBtn.Importance = widget.HighImportance
 
-	// Log
-	g.logText = widget.NewLabel("")
+	// Log (Entry multilinha para permitir seleção/cópia do texto)
+	g.logText = widget.NewMultiLineEntry()
 	g.logText.Wrapping = fyne.TextWrapWord
 	g.logText.TextStyle = fyne.TextStyle{Monospace: true}
 
