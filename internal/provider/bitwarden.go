@@ -46,17 +46,28 @@ func (b *Bitwarden) Unlock(masterPassword string) (string, error) {
 }
 
 func (b *Bitwarden) GetCredentials(session, itemName string) (*Credentials, error) {
-	username, err := bwGet("username", itemName, session)
+	if err := bwSync(session); err != nil {
+		return nil, fmt.Errorf("falha ao sincronizar vault: %w", err)
+	}
+
+	// Resolve o ID pelo nome exato: bw get por nome faz busca parcial e falha
+	// quando há itens com nomes parecidos (ex.: "VPN Gran" e "VPN Gran AWS")
+	itemID, err := bwFindItemID(itemName, session)
+	if err != nil {
+		return nil, err
+	}
+
+	username, err := bwGet("username", itemID, session)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao buscar username: %w", err)
 	}
 
-	password, err := bwGet("password", itemName, session)
+	password, err := bwGet("password", itemID, session)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao buscar password: %w", err)
 	}
 
-	totp, err := bwGet("totp", itemName, session)
+	totp, err := bwGet("totp", itemID, session)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao buscar TOTP: %w", err)
 	}
@@ -112,6 +123,46 @@ func isCorruptedVault(output string) bool {
 	lower := strings.ToLower(output)
 	return strings.Contains(lower, "model state is invalid") ||
 		strings.Contains(lower, "encrypted migrator")
+}
+
+func bwSync(session string) error {
+	cmd := bwCmd("bw", "sync", "--session", session)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func bwFindItemID(itemName, session string) (string, error) {
+	cmd := bwCmd("bw", "list", "items", "--search", itemName, "--session", session)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("falha ao buscar item %q: %s", itemName, strings.TrimSpace(string(out)))
+	}
+
+	var items []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(out, &items); err != nil {
+		return "", fmt.Errorf("resposta inválida do bw list items: %w", err)
+	}
+
+	var matches []string
+	for _, it := range items {
+		if it.Name == itemName {
+			matches = append(matches, it.ID)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("item %q não encontrado no vault", itemName)
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("mais de um item com o nome %q no vault", itemName)
+	}
 }
 
 func bwLogout() {
